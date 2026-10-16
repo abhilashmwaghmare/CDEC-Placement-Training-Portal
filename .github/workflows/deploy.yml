@@ -31,7 +31,8 @@ jobs:
       - name: Prepare static website
         run: |
           mkdir -p site
-          cp -a dist/. site/
+          cp index.html site/
+          cp -a src site/src
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
