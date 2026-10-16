@@ -1,12 +1,12 @@
 (() => {
   const C = window.CLOUDBLITZ_CONTENT;
   if (!C) return;
-  const sheets = Object.fromEntries((C.sheets || []).map(s => [s.name, s]));
+  const sheetList = Array.isArray(C.sheets) ? C.sheets : Object.values(C.sheets || {});
+  const sheets = Object.fromEntries(sheetList.map(s => [s.name, s]));
   const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[ch]));
   const text = row => (row || []).filter(v => String(v ?? '').trim()).join('   ');
   const isSection = value => /SECTION [A-Z]/i.test(String(value || ''));
   const isReminder = value => String(value || '').includes('KEY REMINDER');
-  const isDoDont = row => (row || []).some(v => String(v || '').includes("DO'S")) || (row || []).some(v => String(v || '').includes("DON'TS"));
 
   function sourceVisual(n) {
     const s = sheets[n];
@@ -16,7 +16,6 @@
     const blocks = [];
     let sectionNo = 0;
     let current = null;
-
     const flush = () => { if (current && current.items.length) blocks.push(current); current = null; };
 
     rows.slice(2).forEach((row, idx) => {
@@ -39,7 +38,7 @@
     });
     flush();
 
-    const rendered = blocks.map((b, bi) => {
+    const rendered = blocks.map(b => {
       if (b.reminder) return `<div class="sop-reminder sop-reveal"><div class="sop-reminder-icon">!</div><div><div class="sop-kicker">KEY REMINDER</div><div class="sop-reminder-text">${escapeHtml(b.reminder.replace(/^⚡\s*KEY REMINDER:\s*/i,''))}</div></div></div>`;
       const items = b.items.map((item, ii) => {
         const v = item.values.filter(Boolean);
@@ -59,7 +58,6 @@
 
   function visualDoc(name) {
     if (!sheets[name]) return;
-    if (typeof window.__cloudblitzOriginalDoc !== 'function') window.__cloudblitzOriginalDoc = window.doc;
     const root = document.getElementById('app');
     root.innerHTML = `<div class="app"><header class="topbar"><div class="brand"><div class="brandmark">CB</div><div><h1>CloudBlitz CDEC Placement Training</h1><small>SOP Visual Classroom · Source Workbook</small></div></div><div class="top-actions"><button class="pill-btn" onclick="show('sops')">← SOP Library</button></div></header><main class="content">${sourceVisual(name)}</main></div>`;
     initMotion();
@@ -68,8 +66,10 @@
   function initMotion() {
     const nodes = [...document.querySelectorAll('.sop-reveal')];
     nodes.forEach((el, i) => { el.style.setProperty('--delay', `${Math.min(i * 45, 500)}ms`); });
-    const io = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }), {threshold:.08});
-    nodes.forEach(n => io.observe(n));
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }), {threshold:.08});
+      nodes.forEach(n => io.observe(n));
+    } else nodes.forEach(n => n.classList.add('in'));
     const cards = [...document.querySelectorAll('.sop-card')];
     cards.forEach(card => card.addEventListener('click', () => card.classList.toggle('expanded')));
     const onScroll = () => {
